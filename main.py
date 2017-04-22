@@ -37,17 +37,14 @@ def template_matching():
 
 def get_image_from_S3():
     cred = json.load(open("aws.config.json"))
-    s3 = boto3.client(
-        's3',
-        aws_access_key_id=cred["accessKeyId"],
-        aws_secret_access_key=cred["secretAccessKey"]
-    )
-    obj = boto3.resource('s3', aws_access_key_id=cred["accessKeyId"], aws_secret_access_key=cred["secretAccessKey"],  config=botocore.config.Config("us-east-2"))\
-        .Bucket('multimedia-term-project')\
-        .Object('ryW52UFAe-3-faces.jpg')
+    s3 = boto3.resource('s3', aws_access_key_id=cred["accessKeyId"], aws_secret_access_key=cred["secretAccessKey"],  config=botocore.config.Config("us-east-2"))
+    obj = s3.Bucket('multimedia-term-project').Object('ryW52UFAe-3-faces.jpg')
+
     buffer = obj.get()["Body"].read()
+
     nparr = numpy.fromstring(buffer, numpy.ubyte)
     img_np = cv2.imdecode(nparr, cv2.COLOR_BGR2GRAY)
+    
     find_faces(img_np)
 
 get_image_from_S3()
