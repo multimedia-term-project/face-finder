@@ -3,7 +3,8 @@ import numpy
 import json
 import boto3
 import botocore
-import io
+import os
+
 
 def get_s3():
     cred = json.load(open("aws.config.json"))
@@ -17,8 +18,12 @@ def find_faces(image):
 
     for (x, y, w, h) in faces:
         subface = image[y:y+h, x:x+w]
-        get_s3()
-        cv2.imwrite("faces_{}.jpeg".format(y), subface)
+        filename = "faces_{}.jpeg".format(y)
+        cv2.imwrite(filename, subface)
+        im = open(filename, 'rb')
+        get_s3().Bucket('multimedia-term-project').Object(filename).put(Body=im, ACL='public-read')
+        im.close()
+        os.remove(filename)
 
 
 def template_matching():
