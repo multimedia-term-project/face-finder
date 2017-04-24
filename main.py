@@ -3,7 +3,13 @@ import numpy
 import json
 import boto3
 import botocore
-import io
+import os
+
+
+def get_s3():
+    cred = json.load(open("aws.config.json"))
+    return boto3.resource('s3', aws_access_key_id=cred["accessKeyId"], aws_secret_access_key=cred["secretAccessKey"],
+                        config=botocore.config.Config("us-east-2"))
 
 def find_faces(image):
     faceCascade = cv2.CascadeClassifier("haarcascade_profileface.xml")
@@ -12,7 +18,13 @@ def find_faces(image):
 
     for (x, y, w, h) in faces:
         subface = image[y:y+h, x:x+w]
-        cv2.imwrite("faces_{}.jpeg".format(y), subface)
+        filename = "faces_{}.jpeg".format(y)
+        cv2.imwrite(filename, subface)
+        im = open(filename, 'rb')
+        get_s3().Bucket('multimedia-term-project').Object(filename).put(Body=im, ACL='public-read')
+        im.close()
+        os.remove(filename)
+
 
 def template_matching():
     templates = [cv2.imread("faces_220.jpeg"),
@@ -36,9 +48,8 @@ def template_matching():
             print("Found Face: {}".format(files[i]))
 
 def get_image_from_S3():
-    cred = json.load(open("aws.config.json"))
-    s3 = boto3.resource('s3', aws_access_key_id=cred["accessKeyId"], aws_secret_access_key=cred["secretAccessKey"],  config=botocore.config.Config("us-east-2"))
-    obj = s3.Bucket('multimedia-term-project').Object('ryW52UFAe-3-faces.jpg')
+
+    obj = get_s3().Bucket('multimedia-term-project').Object('ryW52UFAe-3-faces.jpg')
 
     buffer = obj.get()["Body"].read()
 
