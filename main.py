@@ -1,9 +1,11 @@
+import json
+import os
+
 import cv2
 import numpy
-import json
 import boto3
 import botocore
-import os
+
 
 
 def get_s3():
