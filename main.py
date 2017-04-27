@@ -55,6 +55,7 @@ keepGoing = True
 i = 0
 while keepGoing and i < 30:
     try:
+        print("Connection try {}".format(i))
         connectionParams = pika.ConnectionParameters(host="rabitmq")
         connection = pika.BlockingConnection(connectionParams)
         channel = connection.channel()
