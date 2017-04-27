@@ -52,7 +52,8 @@ def get_image_from_S3(fileName):
     find_faces(img_np, fileName)
 
 keepGoing = True
-while keepGoing:
+i = 0
+while keepGoing and i < 30:
     try:
         connectionParams = pika.ConnectionParameters(host="rabitmq")
         connection = pika.BlockingConnection(connectionParams)
@@ -60,6 +61,7 @@ while keepGoing:
         keepGoing = False
     except pika.exceptions.ConnectionClosed:
         time.sleep(1)
+        i = i + 1
 
 
 def callback(ch, method, properties, body):
