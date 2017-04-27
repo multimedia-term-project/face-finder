@@ -1,5 +1,6 @@
 import json
 import os
+import time
 
 import cv2
 import numpy
@@ -50,10 +51,15 @@ def get_image_from_S3(fileName):
     
     find_faces(img_np, fileName)
 
-
-connectionParams = pika.ConnectionParameters(host="rabitmq")
-connection = pika.BlockingConnection(connectionParams)
-channel = connection.channel()
+keepGoing = True
+while keepGoing:
+    try:
+        connectionParams = pika.ConnectionParameters(host="rabitmq")
+        connection = pika.BlockingConnection(connectionParams)
+        channel = connection.channel()
+        keepGoing = False
+    except pika.exceptions.ConnectionClosed:
+        time.sleep(1)
 
 
 def callback(ch, method, properties, body):
