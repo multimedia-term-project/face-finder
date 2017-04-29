@@ -1,6 +1,8 @@
 import json
 import os
 import time
+import codecs
+
 
 import cv2
 import numpy
@@ -66,13 +68,14 @@ while keepGoing and i < 30:
 
 
 def callback(ch, method, properties, body):
-    image = json.load(body)
+    image = json.loads(str(body)[2:-1])
+    print("Name: {name}".format(**image))
     get_image_from_S3(image["name"])
 
 
-channel.basic_consume(callback,
-                      queue='images',
-                      no_ack=True)
+channel.queue_declare(queue='images')
+channel.basic_consume(callback, queue='images', no_ack=True)
+
 
 print('Waiting for messages. To exit press CTRL+C')
 channel.start_consuming()
