@@ -15,11 +15,16 @@ import redis
 """
 Redis
 """
-r = redis.StrictRedis(host="192.168.99.100")#redis
+r = redis.StrictRedis(host="redis")#redis
 
 
 def get(key):
-    return list(str(r.get(key)).split(" ")[1:])
+    value = r.get(key)
+    if value is None:
+        r.set(key, "")
+        return []
+    else:
+        return list(str(value)[2:-1].split(" "))
 
 """
 S3
@@ -55,7 +60,8 @@ def get_faces (userid):
     faceids = get(userid)
     faces = []
     for faceid in faceids:
-        faces.append({"name": faceid, "face": get_image_from_s3(faceid)})
+        if not(faceid == ""):
+            faces.append({"name": faceid, "face": get_image_from_s3(faceid)})
     return None if faces == [] else faces
 
 
@@ -63,7 +69,7 @@ def find_faces(image, image_data):
     print(image_data["name"])
     r.set(image_data["name"], "")
     
-    faceCascade = cv2.CascadeClassifier("haarcascade_profileface.xml")
+    faceCascade = cv2.CascadeClassifier("haarcascade_frontalface_alt_tree.xml")
     grayimage = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     faces = faceCascade.detectMultiScale(grayimage)
     faceimages = []
@@ -83,6 +89,23 @@ def template_match(image, template):
     return max_val
 
 
+def feature_match(images):
+    sift = cv2.xfeatures2d.SIFT_create()
+    # find the keypoints and descriptors with SIFT
+    kp1, des1 = sift.detectAndCompute(images[0], None)
+    kp2, des2 = sift.detectAndCompute(images[1], None)
+    FLANN_INDEX_KDTREE = 1
+    index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
+    search_params = dict(checks=50)
+    flann = cv2.FlannBasedMatcher(index_params, search_params)
+    matches = flann.knnMatch(des1, des2, k=2)
+    # store all the good matches as per Lowe's ratio test.
+    good = []
+    for m, n in matches:
+        if m.distance < 0.7 * n.distance:
+            good.append(m)
+    return len(good)
+
 def match_faces(image, image_data, faces):
     userFaces = get_faces(image_data["userId"])
     for face in faces:
@@ -90,16 +113,16 @@ def match_faces(image, image_data, faces):
             face_score = 0
             face_scores = {}
             for userFace in userFaces:
-                score = template_match(face["face"], userFace["face"])
+                score = feature_match((face["face"], userFace["face"]))
                 face_scores[score] = userFace
                 face_score = max(score, face_score)
 
-            if face_score > 50_000_000_000:
-                r.append(image_data["name"], face_scores[face_score]["name"])
+            if face_score > 10:
+                r.append(image_data["name"], " " + face_scores[face_score]["name"])
                 continue
 
-        r.append(image_data["userId"], face["name"])
-        r.append(image_data["name"], face["name"])
+        r.append(image_data["userId"], " " + face["name"])
+        r.append(image_data["name"], " " + face["name"])
         put_image(face)
 
 """
@@ -110,7 +133,7 @@ i = 0
 while keepGoing and i < 30:
     try:
         print("Connection try {}".format(i))
-        connectionParams = pika.ConnectionParameters(host="192.168.99.100") #rabbitmq
+        connectionParams = pika.ConnectionParameters(host="rabbitmq") #rabbitmq
         connection = pika.BlockingConnection(connectionParams)
         channel = connection.channel()
         keepGoing = False
@@ -121,12 +144,13 @@ while keepGoing and i < 30:
 
 def callback(ch, method, properties, body):
     image_data = json.loads(str(body)[2:-1])
-    print("Name: {name}".format(**image_data))
+    print("Starting Name: {name}".format(**image_data))
     
     image = get_image_from_s3(image_data["name"])
     faces = find_faces(image, image_data)
     match_faces(image, image_data, faces)
-    
+
+    print("Finished Name: {name}".format(**image_data))
 
 channel.queue_declare(queue='images')
 channel.basic_consume(callback, queue='images', no_ack=True)
