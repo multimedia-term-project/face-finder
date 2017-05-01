@@ -95,8 +95,8 @@ def feature_match(images):
     kp1, des1 = sift.detectAndCompute(images[0], None)
     kp2, des2 = sift.detectAndCompute(images[1], None)
 
-    des1.convert_to(des1, cv2.CV_32F)
-    des2.convert_to(des2, cv2.CV_32F)
+    des1 = des1.astype(cv2.CV_32F)
+    des2 = des2.astype(cv2.CV_32F)
 
     FLANN_INDEX_KDTREE = 1
     index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
