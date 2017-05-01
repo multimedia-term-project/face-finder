@@ -1,5 +1,6 @@
 boto3
 opencv-python
+opencv-contrib-python
 numpy
 pika
 redis
